@@ -1,22 +1,43 @@
 const express = require("express");
-const app = express();
+const OpenAI = require("openai");
 
+const app = express();
 app.use(express.json());
 
-app.post("/npc-chat", (req, res) => {
-  const { message } = req.body;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-  let reply = "I’m not sure what to say.";
+app.post("/npc-chat", async (req, res) => {
+  try {
+    const { npcName, personality, message } = req.body;
 
-  if (message.toLowerCase().includes("trust")) {
-    reply = "I don’t trust anyone in this house.";
-  } else if (message.toLowerCase().includes("vote")) {
-    reply = "My vote stays private.";
-  } else if (message.toLowerCase().includes("feel")) {
-    reply = "I’m feeling pressure tonight.";
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are ${npcName}, a ${personality} contestant in a Roblox reality show. 
+Keep responses appropriate, short, dramatic, and in character. 
+Do not swear. Do not talk about unsafe topics.`
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      max_tokens: 60
+    });
+
+    res.json({
+      reply: response.choices[0].message.content
+    });
+  } catch (error) {
+    console.error(error);
+    res.json({
+      reply: "I can't answer right now."
+    });
   }
-
-  res.json({ reply });
 });
 
 app.listen(3000, () => {
